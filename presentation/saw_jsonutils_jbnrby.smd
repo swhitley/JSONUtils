@@ -1,0 +1,19 @@
+{
+  "id": "saw_jsonutils_jbnrby",
+  "applicationId": "saw_jsonutils_jbnrby",
+  "siteId": "saw_jsonutils_jbnrby",
+  "languages": [
+    {
+      "code": "en-US",
+      "description": "English"
+    }
+  ],
+  "siteAuth": {
+    "authTypes": [
+      {
+        "scheme": "SSO",
+        "id": "sso"
+      }
+    ]
+  }
+}

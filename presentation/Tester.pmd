@@ -1,0 +1,42 @@
+{
+  "id": "Tester",
+  "include": [
+    "JsonUtils.script",
+    "JsonLargeSample.script",
+    "JsonComplexSample.script"
+  ],
+  "presentation": {
+    "title": {
+      "type": "title",
+      "label": "JsonUtils Tester"
+    },
+    "body": {
+      "type": "section",
+      "horizontal": false,
+      "children": [
+        {
+          "type": "richText",
+          "id": "complex",
+          "label": "Complex Sample",
+          "value": "<% JsonUtils.toHtml(json:stringify(JsonComplexSample.json)) %>"
+        },
+        {
+          "type": "richText",
+          "id": "large",
+          "label": "Large Sample",
+          "value": "<% JsonUtils.toHtml(json:stringify(JsonLargeSample.json)) %>"
+        }
+      ]
+    },
+    "footer": {
+      "type": "footer",
+      "children": [
+        {
+          "type": "richText",
+          "enabled": "false",
+          "value": "Powered By Workday Extend"
+        }
+      ]
+    }
+  }
+}

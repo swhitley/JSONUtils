@@ -1,0 +1,55 @@
+var json = {
+    "regex_breakers": {
+        "fake_array_string": "[This is just text, not an array]",
+        "fake_object_string": "{\"fake_key\": \"value\"}",
+        "html_injection_attempt": "<span style=\"color:red\">Did I break the colors?</span>",
+        "tricky_colons": "Look at this time: 12:34:56",
+        "url_test": "https://www.workday.com/api/v1/data?id=123&test=true",
+        "empty_string": "",
+        "weird : key [name] {test}": true
+    },
+    "edge_cases": {
+        "escaped_strings": "Line 1\nLine 2\tTabbed \"Quotes\" \\ Backslashes ☺",
+        "empty_array": [],
+        "numeric_variants": [100, -45, 3.1415926535, 6.022E23, -1.0E-9],
+        "mixed_primitives": ["start", 42, false, null, "end"]
+    },
+    "deeply_nested_structure": {
+        "level_1": {
+            "description": "Entering the nested labyrinth",
+            "level_2": {
+                "array_of_objects": [
+                    {
+                        "id": "ALPHA-101",
+                        "level_3": {
+                            "identity_matrix": [
+                                [1, 0, 0],
+                                [0, 1, 0],
+                                [0, 0, 1]
+                            ]
+                        }
+                    },
+                    {
+                        "id": "BETA-202",
+                        "status": "active"
+                    }
+                ],
+                "level_2_sibling": {
+                    "comment": "Parallel branch to test structural sibling indentation logic"
+                }
+            }
+        }
+    },
+    "trailing_array_test": [
+        "end_of_the_line",
+        {
+            "nested_in_final_array": {
+                "wrapped_deeply": true
+            }
+        }
+    ]
+};
+
+{
+  "json": json
+}

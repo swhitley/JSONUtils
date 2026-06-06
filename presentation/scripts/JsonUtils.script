@@ -1,0 +1,150 @@
+const fromHtml = function(htmlStr) {
+    if (empty(htmlStr)) return "";
+    
+    const NL = "\n";
+    let txt = htmlStr;
+    txt = regex:replace(txt, "<p>",  "");
+    txt = regex:replace(txt, "</p>", NL);
+    txt = regex:replace(txt, "<br />", NL);
+    txt = txt.trim();
+    return txt;
+};
+
+const toHtml = function(jsonStr) {
+    if (empty(jsonStr)) return "";
+
+    // ==========================================
+    // CONFIGURATION & SAFETY LIMITS
+    // ==========================================
+    var MAX_INPUT_CHARS = 55000;         // Max size of initial JSON payload
+    var MAX_HTML_CHARS = 300000;         // Max size of final HTML output before truncation
+    var MAX_INDENT_LEVEL = 80;           // Prevents infinite runaway indentation
+    var CHUNK_FLUSH_SIZE = 200;          // Number of lines to hold in memory before flushing
+    var MAX_COLLAPSE_ITERATIONS = 25;    // Max items in a primitive array before stopping collapse
+    // ==========================================
+
+    var truncated = false;
+    
+    if (jsonStr.size() > MAX_INPUT_CHARS) {
+      jsonStr = jsonStr.substring(0, MAX_INPUT_CHARS);
+      truncated = true;
+    }
+
+    // --- Color Pipeline ---
+    jsonStr = regex:replace(jsonStr, "&", "&amp;");
+    jsonStr = regex:replace(jsonStr, "<", "&lt;");
+    jsonStr = regex:replace(jsonStr, ">", "&gt;");
+
+    jsonStr = regex:replace(jsonStr, "\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"", "<span style=\"color:#098658\">&quot;$1&quot;</span>");
+    jsonStr = regex:replace(jsonStr, "<span style=\"color:#098658\">([^<]*)</span>(\\s*:)", "<span style=\"color:#A31515\">$1</span>$2");
+    
+    jsonStr = regex:replace(jsonStr, "(?![^<]*?<\/span>)(^|[\\[\\{:,\\s])(-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?)(?=\\s*([,\\}\\]]|$))", "$1<span style=\"color:#0451A5\">$2</span>");
+    jsonStr = regex:replace(jsonStr, "(?![^<]*?<\/span>)(^|[\\[\\{:,\\s])(true|false)(?=\\s*([,\\}\\]]|$))", "$1<span style=\"color:#0451A5\">$2</span>");
+    jsonStr = regex:replace(jsonStr, "(?![^<]*?<\/span>)(^|[\\[\\{:,\\s])(null)(?=\\s*([,\\}\\]]|$))", "$1<span style=\"color:#707070\">$2</span>");
+
+    jsonStr = regex:replace(jsonStr, "(?![^<]*?<\/span>)([\\{\\}\\[\\]])", "<span style=\"color:#333333\">$1</span>");
+    jsonStr = regex:replace(jsonStr, "(<\\/span>)\\s*:(\\s*)", "$1: ");
+
+    // --- Line Splitting ---
+    jsonStr = regex:replace(jsonStr, "(<span style=\"color:#333333\">[\\{\\[]</span>)", "$1\n");
+    jsonStr = regex:replace(jsonStr, "(<span style=\"color:#333333\">[\\}\\]]</span>)", "\n$1");
+    jsonStr = regex:replace(jsonStr, ",(?![^<]*?<\/span>)", ",\n");
+
+    // --- Array & Object Collapsing ---
+    var primSpan = "(<span style=\"color:#(?:0451A5|098658|707070)\">[^<]*</span>)";
+    for (var r = 0; r < MAX_COLLAPSE_ITERATIONS; r++) {
+      var strBefore = jsonStr;
+      jsonStr = regex:replace(jsonStr, primSpan + ",\\n" + primSpan, "$1, $2");
+      // Break when no more replacements are made
+      if (strBefore == jsonStr) break; 
+    }
+
+    var bracketArray = "(<span style=\"color:#333333\">\\[</span>)\\n([^\\n]+)\\n(<span style=\"color:#333333\">\\]</span>)";
+    jsonStr = regex:replace(jsonStr, bracketArray, "$1$2$3");
+
+    // Collapse natively empty structures (e.g., "empty_array": [])
+    var emptyBracket = "(<span style=\"color:#333333\">\\[</span>)\\n\\n(<span style=\"color:#333333\">\\]</span>)";
+    jsonStr = regex:replace(jsonStr, emptyBracket, "$1$2");
+
+    var emptyBrace = "(<span style=\"color:#333333\">\\{</span>)\\n\\n(<span style=\"color:#333333\">\\}</span>)";
+    jsonStr = regex:replace(jsonStr, emptyBrace, "$1$2");
+
+    // --- Indentation & Output Assembly ---
+    var chunks = []; 
+    var out = [];    
+    var depth = 0;
+    var htmlSizeTracker = 0; 
+    var strLen = jsonStr.size();
+    var startIdx = 0;
+
+    var indentCache = [];
+    indentCache.add("");
+    var getIndent = function(lvl) {
+      while (indentCache.size() <= lvl) {
+        indentCache.add(indentCache[indentCache.size() - 1] + "&nbsp;&nbsp;&nbsp;&nbsp;");
+      }
+      return indentCache[lvl];
+    };
+
+    while (startIdx < strLen) {
+      var nextNewline = jsonStr.indexOf("\n", startIdx);
+      var line = "";
+      
+      if (nextNewline == -1) {
+        line = jsonStr.substring(startIdx, strLen);
+        startIdx = strLen;
+      } else {
+        line = jsonStr.substring(startIdx, nextNewline);
+        startIdx = nextNewline + 1;
+      }
+
+      line = regex:replace(line, "^\\s+", "");
+      line = regex:replace(line, "\\s+$", "");
+
+      if (empty(line)) continue;
+
+      if (string:startsWith(line, "<span style=\"color:#333333\">}") || string:startsWith(line, "<span style=\"color:#333333\">]")) {
+        depth--;
+        if (depth < 0) depth = 0;
+      }
+
+      if (htmlSizeTracker > MAX_HTML_CHARS) {
+        truncated = true;
+        break;
+      }
+
+      var renderDepth = depth;
+      if (renderDepth > MAX_INDENT_LEVEL) renderDepth = MAX_INDENT_LEVEL;
+
+      var indentStr = getIndent(renderDepth);
+      out.add(indentStr);
+      out.add(line);
+      out.add("<br>");
+
+      htmlSizeTracker = htmlSizeTracker + indentStr.size() + line.size() + 4;
+
+      if (string:endsWith(line, "{</span>") || string:endsWith(line, "[</span>")) {
+        depth++;
+      }
+
+      if (out.size() > CHUNK_FLUSH_SIZE) {
+        chunks.add(out.join(""));
+        out = [];
+      }
+    }
+
+    if (out.size() > 0) {
+      chunks.add(out.join(""));
+    }
+
+    if (truncated) {
+      chunks.add("<br><div style=\"color:#CD3131; font-weight:bold; font-family:sans-serif; border:1px solid #CD3131; padding:8px; background:#FDF2F2;\">... [JSON display truncated due to size limits. The final element may be incomplete.]</div>");
+    }
+
+    return "<div style=\"font-family:monospace; font-size:13px; line-height:1.5;\">" + chunks.join("") + "</div>";
+};
+
+{
+  "toHtml": toHtml,
+  "fromHtml": fromHtml
+}
