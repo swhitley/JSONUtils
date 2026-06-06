@@ -1,7 +1,7 @@
 # JSONUtils
 Workday PMD utility functions for safely formatting JSON payloads into syntax-highlighted HTML, and parsing HTML back into plain text.
 
-The script is located below.  Other files may be ignored as they are for demonstrating and testing:
+Use the script provided below. Any additional files are for demonstration only and may be ignored:
 
 [presentation/scripts/JsonUtils.script](https://github.com/swhitley/JSONUtils/blob/d778b02b71ee2630b222de8ec41e619b27041e2f/presentation/scripts/JsonUtils.script)
 
